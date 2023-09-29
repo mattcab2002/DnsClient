@@ -11,3 +11,15 @@ parser.add_argument('server', help = 'IPv4 address of the DNS server, in a.b.c.d
 parser.add_argument('name', help = 'Domain name to query for') # string
 
 args = parser.parse_args()
+
+print("DnsClient sending request for " + args.name)
+print("Server: " + args.server)
+
+if (args.mx):
+    requestType = "MX"
+elif (args.ns):
+    requestType = "NS"
+else: 
+    requestType = "A"
+
+print("Request type: " + requestType)
