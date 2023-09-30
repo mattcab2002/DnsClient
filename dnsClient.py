@@ -1,6 +1,7 @@
 import socket
 import random
 import argparse
+import time
 
 
 class DNSPacket:
@@ -188,23 +189,35 @@ def main():
 
     dnsPacket = DNSPacket(header, question, answer=None)
 
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect((args.server, args.p))
+    retries = 0
+    while retries <= args.r:
 
-    print(f"DnsClient sending request for [{dnsPacket.question.QNAME}] \nServer: [{args.server}] \nRequest type: [{dnsPacket.question.QTYPE}]\n")
+        try:
 
-    s.send(bytes.fromhex(dnsPacket.__str__()))
+            s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            s.connect((args.server, args.p))
 
-    try:
-        while True:
-            data = s.recv(1024)
-            if data is not None:
-                print("Received Data!")
-                print(data)
-    except KeyboardInterrupt:
-        pass
-    finally:
-        s.close()
+            print(f"DnsClient sending request for [{dnsPacket.question.QNAME}] \nServer: [{args.server}] \nRequest type: [{dnsPacket.question.QTYPE}]\n")
+
+            startTime = time.time()
+            s.send(bytes.fromhex(dnsPacket.__str__()))
+            try:
+                while True:
+                    data = s.recv(1024)
+                    endTime = time.time()
+                    responseTime = endTime - startTime
+                    print(f"Response received after {responseTime} seconds ({retries} retries)\n")
+                    if data is not None:
+                        print("Received Data!")
+                        print(data)
+            except KeyboardInterrupt:
+                pass
+            finally:
+                s.close()
+                return
+        except socket.error:
+            retries += 1
+
 
 
 if __name__ == "__main__":
