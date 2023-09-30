@@ -1,5 +1,6 @@
 import socket
 import random
+import argparse
 
 
 class DNSPacket:
@@ -69,7 +70,8 @@ class DNSPacket:
                 self.RCODE = RCODE  # check in response
 
             def __str__(self):
-                return "{:01b}{:04b}{:01b}{:01b}{:01b}{:01b}{:03b}{:04b}".format(self.QR, self.OPCODE, self.AA, self.TC, self.RD, self.RA, self.Z, self.RCODE)
+                return "{:01b}{:04b}{:01b}{:01b}{:01b}{:01b}{:03b}{:04b}".format(self.QR, self.OPCODE, self.AA, self.TC,
+                                                                                 self.RD, self.RA, self.Z, self.RCODE)
 
             def to_hex(self):
                 return "{:04x}".format(int(self.__str__(), 2))
@@ -157,21 +159,39 @@ class DNSPacket:
 def seperate_string(string, spacers):
     return ' '.join(string[i:i + spacers] for i in range(0, len(string), spacers))
 
+
 def main():
-    server = "8.8.8.8"
-    port = 53
-    name = "www.mcgill.ca"
-    query_type = "A"
+    parser = argparse.ArgumentParser(description='DNS Client')
+    group = parser.add_mutually_exclusive_group()
+    parser.add_argument('-t', type=int, help='Timeout, in seconds, before retransmitting an unanswered query',
+                        default=5)
+    parser.add_argument('-r', type=int,
+                        help='Maximum number of times to retransmit an unanswered query before giving up', default=3)
+    parser.add_argument('-p', type=int, help='UDP port number of the DNS server', default=53)
+    group.add_argument('-mx', action='store_true', help='Send a MX (mail server) query')  # string
+    group.add_argument('-ns', action='store_true', help='Send a NS (name server) query')  # string
+    parser.add_argument('server', help='IPv4 address of the DNS server, in a.b.c.d format')  # string
+    parser.add_argument('name', help='Domain name to query for')  # string
+
+    args = parser.parse_args()
+
+    if args.mx:
+        requestType = "MX"
+    elif args.ns:
+        requestType = "NS"
+    else:
+        requestType = "A"
+
     flags = DNSPacket.Header.Flags.get_request_flags(0b0)  # how to handle truncating ?
     header = DNSPacket.Header.get_request_header(flags)
-    question = DNSPacket.Question.get_request_question(name, query_type)
+    question = DNSPacket.Question.get_request_question(args.name, requestType)
 
     dnsPacket = DNSPacket(header, question, answer=None)
 
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.connect((server, port))
+    s.connect((args.server, args.p))
 
-    print(f"DnsClient sending request for [{dnsPacket.question.QNAME}] \nServer: [{server}] \nRequest type: [{dnsPacket.question.QTYPE}]\n")
+    print(f"DnsClient sending request for [{dnsPacket.question.QNAME}] \nServer: [{args.server}] \nRequest type: [{dnsPacket.question.QTYPE}]\n")
 
     s.send(bytes.fromhex(dnsPacket.__str__()))
 
