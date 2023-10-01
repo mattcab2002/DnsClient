@@ -160,6 +160,12 @@ class DNSPacket:
 def seperate_string(string, spacers):
     return ' '.join(string[i:i + spacers] for i in range(0, len(string), spacers))
 
+def get_number_of_answers(data):
+    return (data[6] << 8) | data[7]  # takes answer bytes into integer
+
+
+    
+
 
 def main():
     parser = argparse.ArgumentParser(description='DNS Client')
@@ -210,6 +216,7 @@ def main():
                     if data is not None:
                         print("Received Data!")
                         print(data)
+                        print(f"***Answers Section ({get_number_of_answers(data)} records)***\n")
             except KeyboardInterrupt:
                 pass
             finally:
