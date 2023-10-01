@@ -26,8 +26,8 @@ class DNSPacket:
         NSCOUNT = None
         ARCOUNT = None
 
-        def __init__(self, FLAGS, QDCOUNT, ANCOUNT, NSCOUNT, ARCOUNT):
-            self.ID = random.getrandbits(16)
+        def __init__(self, FLAGS, QDCOUNT, ANCOUNT, NSCOUNT, ARCOUNT, ID = random.getrandbits(16)):
+            self.ID = ID
             self.FLAGS = FLAGS
             self.QDCOUNT = QDCOUNT
             self.ANCOUNT = ANCOUNT
@@ -102,12 +102,12 @@ class DNSPacket:
             labels = self.QNAME.split(".")
             return_string = ""
             for label in labels:
-                return_string += "{:02x}".format(len(label))
+                return_string += "{:02x} ".format(len(label))
                 for ch in label:
-                    return_string += "{}".format(hex(ord(ch))[2:])
-            return_string += "{:02x}".format(0)  # indicating end of QNAME
-            return_string += "{:04x}".format(self.QTYPE)
-            return_string += "{:04x}".format(self.QCLASS)
+                    return_string += "{} ".format(hex(ord(ch))[2:])
+            return_string += "{:02x} ".format(0)  # indicating end of QNAME
+            return_string += "{} {} ".format("{:04x}".format(self.QTYPE)[:2], "{:04x}".format(self.QTYPE)[2:])
+            return_string += "{} {}".format("{:04x}".format(self.QCLASS)[:2], "{:04x}".format(self.QCLASS)[2:])
             return return_string
 
         @classmethod
@@ -188,6 +188,7 @@ def main():
     question = DNSPacket.Question.get_request_question(args.name, requestType)
 
     dnsPacket = DNSPacket(header, question, answer=None)
+    print(dnsPacket)
 
     retries = 0
     while retries <= args.r:
