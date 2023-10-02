@@ -243,7 +243,7 @@ class DNSPacket:
                     pref = data[pointer] << 8 | data[pointer + 1]
                     pointer += 2
                     exchange = get_alias(data, pointer)
-                    pointer += rdlength
+                    pointer += rdlength - 2
                     return (cls(name, type, packet_class,ttl, rdlength, cls.RDATA(None, pref,exchange)), pointer)
                 case default:
                     return (None, pointer)
@@ -335,7 +335,6 @@ def get_additional_information(data, pointer, additionalRecordsNum):
         # Check type
         type = data[pointer] << 8 | data[pointer + 1]
         pointer += 4    # Beginning of TTL bytes
-        print(type)
         match type:
             case 5:
                 ttl = getTTL(data, pointer)
@@ -367,7 +366,7 @@ def get_additional_information(data, pointer, additionalRecordsNum):
                 pref = data[pointer] << 8 | data[pointer + 1]
                 pointer += 2
                 alias = get_alias(data, pointer)
-                pointer += rdlength
+                pointer += rdlength - 2
                 print(f"MX \t {alias} \t {pref} \t {ttl} \t {authorityBit}\n")
     return pointer
 
