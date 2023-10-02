@@ -184,15 +184,18 @@ class DNSPacket:
             return cls(NAME, TYPE, CLASS, TTL, RDLENGTH, RDATA)
 
         def __str__(self, auth_bit = None):
+            auth = "auth"
+            if auth_bit == 1:
+                auth = "nonauth"
             match self.TYPE:
                 case 0x0001:
-                    return f"IP \t {self.RDATA.DATA} \t {self.TTL} \t {auth_bit}\n"
+                    return f"IP \t {self.RDATA.DATA} \t {self.TTL} \t {auth}\n"
                 case 0x0002:
-                    return f"NS \t {self.RDATA.DATA} \t {self.TTL} \t {auth_bit}\n"
+                    return f"NS \t {self.RDATA.DATA} \t {self.TTL} \t {auth}\n"
                 case 0x0005:
-                    return f"CNAME \t {self.RDATA.DATA} \t {self.TTL} \t {auth_bit}\n"
+                    return f"CNAME \t {self.RDATA.DATA} \t {self.TTL} \t {auth}\n"
                 case 0x000f:
-                    return f"MX \t {self.RDATA.ALIAS} \t {self.RDATA.PREFERENCE} \t {self.TTL} \t {auth_bit}\n"
+                    return f"MX \t {self.RDATA.EXCHANGE} \t {self.RDATA.PREFERENCE} \t {self.TTL} \t {auth}\n"
                 case default:
                     pass
 
