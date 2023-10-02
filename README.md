@@ -40,8 +40,48 @@ Lastly, we have our top-level main method which is responsible for wiring everyt
 
 ## Testing
 
-In order to test our implementation we utilized the `unittest` library. We wrote test cases related to the construction of DNS packets, marshalling and unmarshalling data, the destructuring of example DNS response packets, and response times of sending/receiving packets over a UDP socket.
+In order to test our implementation we utilized the `unittest` library and created a test suit library called dnsClientTestSuite.py. 
 
+We wrote test cases related to the construction of DNS packets, marshalling and unmarshalling data, timeouts and response times of sending/receiving packets over a UDP socket, along with testing our dns clients error handling.
+
+We achieved this by creating a series of functions and either using example data provided in the outline of the assignment or personal mock data and created various assertions that would make the function succeed or fail. More specifically we were able to test the timeouts and response times of our client by "mocking" the arguments a user would have passed in the console in the form of a class called `TestParser` and running our client with the arguments and checking return result along with the runtime of our client.
+
+## Environment / Libraries Used
+
+### dnsClient.py
+
+In the dnsClient we used 6 different libraries: socket, random, argparse, time, re.
+
+The socket library and argparse library were the foundation of our dnsClient, providing the creation and connection to a socket and the arguments needed to construct the CLI (respectively). 
+
+The random library was used to produce random 16 bit integers for the ids of the request packet.
+
+The time library was used in order to keep track of timeouts.
+
+The re library was used to validate the server provided in the arguments and assuring it does not contain invalid characters.
+
+### dnsClientTestSuite.py
+
+In the dnsClientTestSuite we use 3 different libraries: time, dnsClient, and unittest.
+
+The unittest library gives us the capability to write assertions in order to test our code.
+
+The time library is used to assess the timeout is correctly implemented.
+
+Lastly, we import the dnsClient we worked on and call its main method in order to test its output.
+
+## Error Handling
+
+In order to ensure our DNS Client works properly we created various error checks accross our implementation. In order to facilitate catching some of these exceptions from nested functions we also created a custom exception called DNSClientException which we could "raise" from within an inner function and catch in its parent function. This allows us to change the context of the program running while being rest assured we are catching self-invoked errors.
+
+Some of the notable error checks we have are the following:
+
+- Checking to see if the server name follows an "a.b.c.d" format; That is 4 octets of value less than 256 and integers.
+- Checking to see if the id of the request packet matches that of the response packet.
+- Checking to see if the amount of retries has exceeded or the timeout has exceeded.
+- Checking to see if the number of questions in the answer matches the number of questions sent in the request.
+- Checking to see if the response's rcode contains an unexpected value.
+- Checking to see if the DNS server accepts recursive querries.
 ## Experiment
 
 > What are the IP addresses of McGill’s DNS servers? Use the Google public DNS server (8.8.8.8) to perform a NS query for mcgill.ca and any subsequent follow-up queries that may be required. What response do you get? Does this match what you expected?
