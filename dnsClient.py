@@ -314,6 +314,10 @@ def get_additional_information(data, pointer, additionalRecordsNum):
     print(f"*** Additional Section ({additionalRecordsNum} records) ***\n")
     authorityBit = (data[2] & 32) >> 5
     aCounter = 0
+
+    auth = "nonauth"
+    if authorityBit == 1:
+        auth = "auth"
     # Iterates through response records
     while aCounter < additionalRecordsNum:
         # Finds byte after 'NAME' field in response
@@ -343,13 +347,13 @@ def get_additional_information(data, pointer, additionalRecordsNum):
                 pointer += 2    # Beginning of RData
                 alias = get_alias(data, pointer)
                 pointer += rdlength ## Beginning of next answer
-                print(f"CNAME \t {alias} \t {ttl} \t {authorityBit}\n")
+                print(f"CNAME \t {alias} \t {ttl} \t {auth}\n")
             case 1:
                 ttl = getTTL(data, pointer)
                 pointer += 6 # go straight to RData
                 ip = get_ip_address(data, pointer)
                 pointer +=4 # Beginning of next answer
-                print(f"IP \t {ip} \t {ttl} \t { authorityBit}\n")
+                print(f"IP \t {ip} \t {ttl} \t {auth}\n")
             case 2:
                 ttl = getTTL(data, pointer)
                 pointer += 4
@@ -357,7 +361,7 @@ def get_additional_information(data, pointer, additionalRecordsNum):
                 pointer += 2
                 alias = get_alias(data,pointer)
                 pointer += rdlength
-                print(f"NS \t {alias} \t {ttl} \t {authorityBit}\n")
+                print(f"NS \t {alias} \t {ttl} \t {auth}\n")
             case 15:
                 ttl = getTTL(data, pointer)
                 pointer += 4
@@ -366,8 +370,8 @@ def get_additional_information(data, pointer, additionalRecordsNum):
                 pref = data[pointer] << 8 | data[pointer + 1]
                 pointer += 2
                 alias = get_alias(data, pointer)
-                pointer += rdlength - 2
-                print(f"MX \t {alias} \t {pref} \t {ttl} \t {authorityBit}\n")
+                pointer += rdlength
+                print(f"MX \t {alias} \t {pref} \t {ttl} \t {auth}\n")
     return pointer
 
 
