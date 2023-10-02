@@ -1,6 +1,4 @@
 import unittest
-import dnsClient
-import socket
 import time
 from dnsClient import main
 

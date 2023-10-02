@@ -2,7 +2,6 @@ import socket
 import random
 import argparse
 import time
-import struct
 import re
 
 class DNSClientException(Exception):
