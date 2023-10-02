@@ -2,6 +2,7 @@ import socket
 import random
 import argparse
 import time
+import struct
 
 
 class DNSPacket:
@@ -160,11 +161,80 @@ class DNSPacket:
 def seperate_string(string, spacers):
     return ' '.join(string[i:i + spacers] for i in range(0, len(string), spacers))
 
-def get_number_of_answers(data):
-    return (data[6] << 8) | data[7]  # takes answer bytes into integer
+def getTTL(data, pointer):
+    ttl_bytes = data[pointer:pointer+4]  # TTL is 4 bytes long
+    ttl = (ttl_bytes[0] << 24) | (ttl_bytes[1] << 16) | (ttl_bytes[2] << 8) | ttl_bytes[3]
+    print(f"THIS IS THE TTL IN SECONDS : {ttl}")
+    return ttl
 
+def get_response_information(data, question):
+    authorityBit = (data[2] & 32) >> 5
 
+    numQuestions = (data[4] << 8) | data[5] # number of questions
+    qCounter = 0
+    pointer = 12    # starts at 12 because of 12 byte header
+    print(f"THIS IS THE NUMBER OF QUESTIONS : {numQuestions}\n")
+
+    # Counts bytes taken by all questions
+    while qCounter < numQuestions:
+        counter = 1     # start at 1 because of ending 0 byte
+        name = question.QNAME
+        labels = name.split('.')
+        counter += len(labels)
+        
+        for label in labels:
+            for char in label:
+                counter += 1
+        
+        counter += 4    # QTYPE and QCLASS bytes 
+        pointer += counter
+        qCounter += 1
     
+    numAnswers = (data[6] << 8) | data[7]  # takes answer bytes into integer
+    print(f"\n***Answers Section ({numAnswers} records)***\n")
+    aCounter = 0
+
+    # makes sure we start at the beginning of the byte sequence
+    if (pointer % 2 != 0) :
+        pointer += 1
+    print(f'THIS IS THE CURRENT START OF THE ANSWER SECTION : {pointer}')
+    # Iterates through response records
+    while aCounter < numAnswers:
+        # Finds byte after 'NAME' field in response
+
+        print(f"\nTHIS IS THE BYTE, {32}, WITH THE POINTER : {(data[32] & 12) == 12}")
+        while True:
+            print(f"VALUE AT THE {pointer} BYTE : {data[pointer]}")
+            # Checks if we hit ending byte '0' and pointer to location after accordingly
+            if (data[pointer] == 0x0000):
+                print(f"ZERO BYTE FOUND AT : {pointer}")
+                if (pointer % 2 == 0):
+                    pointer += 2
+                else:
+                    pointer += 1
+                break
+            elif ((data[pointer] & 3) == 3):
+                print(f"POINTER FOUND AT : {pointer}")
+                pointer += 2
+                break 
+
+            pointer += 1
+
+        aCounter += 1
+        
+        # Check type
+        print(f'THIS IS THE START OF THE TYPE SECTION : {pointer}\n')
+        type = data[pointer]
+        print(f"THIS IS THE TYPE: {type} \n")
+        pointer += 4    # Beginning of TTL bytes
+        match type:
+            case 5:
+                print(f"THIS IS THE START OF THE TTL SECTION : {pointer}")
+                ttl = getTTL(data, pointer)
+                # pointer += 4
+                rdlength = (data[pointer])
+                print(f"\nTHIS IS THE LENGTH OF RDATA IN BYTES : {rdlength}")
+
 
 
 def main():
@@ -193,8 +263,10 @@ def main():
     header = DNSPacket.Header.get_request_header(flags)
     question = DNSPacket.Question.get_request_question(args.name, requestType)
 
+
     dnsPacket = DNSPacket(header, question, answer=None)
     print(dnsPacket)
+
 
     retries = 0
     while retries <= args.r:
@@ -217,7 +289,7 @@ def main():
                     if data is not None:
                         print("Received Data!")
                         print(data)
-                        print(f"***Answers Section ({get_number_of_answers(data)} records)***\n")
+                        get_response_information(data, question)
             except KeyboardInterrupt:
                 pass
             finally:
