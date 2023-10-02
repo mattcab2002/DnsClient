@@ -335,6 +335,7 @@ def get_additional_information(data, pointer, additionalRecordsNum):
         # Check type
         type = data[pointer] << 8 | data[pointer + 1]
         pointer += 4    # Beginning of TTL bytes
+        print(type)
         match type:
             case 5:
                 ttl = getTTL(data, pointer)
