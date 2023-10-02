@@ -164,8 +164,38 @@ def seperate_string(string, spacers):
 def getTTL(data, pointer):
     ttl_bytes = data[pointer:pointer+4]  # TTL is 4 bytes long
     ttl = (ttl_bytes[0] << 24) | (ttl_bytes[1] << 16) | (ttl_bytes[2] << 8) | ttl_bytes[3]
-    print(f"THIS IS THE TTL IN SECONDS : {ttl}")
+    print(f"THIS IS THE TTL IN SECONDS : {ttl}\n")
     return ttl
+
+def get_cname_alias(data, pointer, rdLength):
+    counter = 0
+    cname = []
+
+    while counter < rdLength:
+        label_length = data[pointer]
+        labels = []
+        for i in range(pointer + 1, pointer + label_length + 1):
+            labels.append(chr(data[i]))
+        cname.append(''.join(labels))
+        
+        print(f"THIS IS THE LABEL : {cname}")
+        counter += label_length + 1
+        pointer += label_length + 1
+    
+    alias = '.'.join(cname)
+    print(f"THIS IS THE CNAME ALIAS : {alias}\n")
+
+
+# Extract the labels in the RDATA (CNAME) field
+    for _ in range(14):
+        label_length = data[pointer]
+        label = data[pointer + 1:pointer + 1 + label_length]
+        cname.append(label.decode('utf-8'))
+        pointer += 1 + label_length
+
+    # Join the labels to form the CNAME
+    cname = '.'.join(cname)
+    print(f"THIS IS THE CNAME ALIAS : {cname}")
 
 def get_response_information(data, question):
     authorityBit = (data[2] & 32) >> 5
@@ -191,32 +221,27 @@ def get_response_information(data, question):
         qCounter += 1
     
     numAnswers = (data[6] << 8) | data[7]  # takes answer bytes into integer
-    print(f"\n***Answers Section ({numAnswers} records)***\n")
+    print(f"***Answers Section ({numAnswers} records)***\n")
     aCounter = 0
 
     # makes sure we start at the beginning of the byte sequence
-    if (pointer % 2 != 0) :
-        pointer += 1
-    print(f'THIS IS THE CURRENT START OF THE ANSWER SECTION : {pointer}')
+    print(f'THIS IS THE CURRENT START OF THE ANSWER SECTION : {pointer}\n')
     # Iterates through response records
     while aCounter < numAnswers:
         # Finds byte after 'NAME' field in response
 
-        print(f"\nTHIS IS THE BYTE, {32}, WITH THE POINTER : {(data[32] & 12) == 12}")
         while True:
-            print(f"VALUE AT THE {pointer} BYTE : {data[pointer]}")
+            print(f"VALUE AT THE {pointer} BYTE : {data[pointer]}\n")
             # Checks if we hit ending byte '0' and pointer to location after accordingly
-            if (data[pointer] == 0x0000):
-                print(f"ZERO BYTE FOUND AT : {pointer}")
-                if (pointer % 2 == 0):
-                    pointer += 2
-                else:
-                    pointer += 1
-                break
-            elif ((data[pointer] & 3) == 3):
-                print(f"POINTER FOUND AT : {pointer}")
+            if (data[pointer] == 0):
+                print(f"ZERO BYTE FOUND AT : {pointer}\n")
+                pointer += 1
+                break;
+            
+            if ((data[pointer] & 0xC0) == 0xC0):
+                print(f"POINTER FOUND AT : {pointer}\n")
                 pointer += 2
-                break 
+                break;
 
             pointer += 1
 
@@ -224,16 +249,20 @@ def get_response_information(data, question):
         
         # Check type
         print(f'THIS IS THE START OF THE TYPE SECTION : {pointer}\n')
-        type = data[pointer]
+        type = data[pointer] << 8 | data[pointer + 1]
         print(f"THIS IS THE TYPE: {type} \n")
         pointer += 4    # Beginning of TTL bytes
         match type:
             case 5:
-                print(f"THIS IS THE START OF THE TTL SECTION : {pointer}")
+                print(f"THIS IS THE START OF THE TTL SECTION : {pointer}\n")
                 ttl = getTTL(data, pointer)
-                # pointer += 4
-                rdlength = (data[pointer])
-                print(f"\nTHIS IS THE LENGTH OF RDATA IN BYTES : {rdlength}")
+                pointer += 4    # Beginning of the RDLength
+                print(f"THIS IS THE START OF THE RDLENGTH SECTION : {pointer}\n")
+                rdlength = data[pointer] << 8 | data[pointer + 1]
+                print(f"THIS IS THE LENGTH OF RDATA IN BYTES : {rdlength}\n")
+                pointer += 2    # Beginning of RData
+                print(f"THIS IS THE START OF THE RDATA SECTION : {pointer}")
+                get_cname_alias(data, pointer, rdlength)
 
 
 
