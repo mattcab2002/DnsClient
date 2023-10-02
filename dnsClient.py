@@ -184,9 +184,9 @@ class DNSPacket:
             return cls(NAME, TYPE, CLASS, TTL, RDLENGTH, RDATA)
 
         def __str__(self, auth_bit = None):
-            auth = "auth"
+            auth = "nonauth"
             if auth_bit == 1:
-                auth = "nonauth"
+                auth = "auth"
             match self.TYPE:
                 case 0x0001:
                     return f"IP \t {self.RDATA.DATA} \t {self.TTL} \t {auth}\n"
