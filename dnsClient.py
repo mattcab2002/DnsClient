@@ -167,35 +167,115 @@ def getTTL(data, pointer):
     print(f"THIS IS THE TTL IN SECONDS : {ttl}\n")
     return ttl
 
-def get_cname_alias(data, pointer, rdLength):
-    counter = 0
+def get_alias(data, pointer):
     cname = []
 
-    while counter < rdLength:
+    while True:
         label_length = data[pointer]
+        if (label_length == 0xC0):
+            pointer = data[pointer + 1]     # Sets the pointer to the pointed address
+            label_length = data[pointer]
+
         labels = []
         for i in range(pointer + 1, pointer + label_length + 1):
             labels.append(chr(data[i]))
         cname.append(''.join(labels))
         
-        print(f"THIS IS THE LABEL : {cname}")
-        counter += label_length + 1
         pointer += label_length + 1
-    
+        if (data[pointer] == 0):
+            break
     alias = '.'.join(cname)
-    print(f"THIS IS THE CNAME ALIAS : {alias}\n")
+    return alias
+
+def get_ip_address(data, pointer):
+    counter = 0
+    sections = []
+    ip = []
+    while counter < 4:
+        sections.append(data[pointer])
+        counter += 1
+        pointer += 1
+
+    for i in sections:
+        ip.append(str(i))
+
+    ip = '.'.join(ip)
+    return ip
+
+def get_additional_information(data, pointer, additionalRecordsNum):
+    print(f"*** Additional Section ({additionalRecordsNum} records) ***\n")
+    authorityBit = (data[2] & 32) >> 5
+    aCounter = 0
+    # Iterates through response records
+    while aCounter < additionalRecordsNum:
+        # Finds byte after 'NAME' field in response
+
+        while True:
+            print(f"VALUE AT THE {pointer} BYTE : {data[pointer]}\n")
+            # Checks if we hit ending byte '0' and pointer to location after accordingly
+            if (data[pointer] == 0):
+                print(f"ZERO BYTE FOUND AT : {pointer}\n")
+                pointer += 1
+                break;
+            
+            if ((data[pointer] & 0xC0) == 0xC0):
+                print(f"POINTER FOUND AT : {pointer}\n")
+                pointer += 2
+                break;
+
+            pointer += 1
+
+        aCounter += 1
+        
+        # Check type
+        print(f'THIS IS THE START OF THE TYPE SECTION : {pointer}\n')
+        type = data[pointer] << 8 | data[pointer + 1]
+        print(f"THIS IS THE TYPE: {type} \n")
+        pointer += 4    # Beginning of TTL bytes
+        match type:
+            case 5:
+                print("THIS IS THE START OF THE CNAME SECTION\n")
+                print(f"THIS IS THE START OF THE TTL SECTION : {pointer}\n")
+                ttl = getTTL(data, pointer)
+                pointer += 4    # Beginning of the RDLength
+                print(f"THIS IS THE START OF THE RDLENGTH SECTION : {pointer}\n")
+                rdlength = data[pointer] << 8 | data[pointer + 1]
+                print(f"THIS IS THE LENGTH OF RDATA IN BYTES : {rdlength}\n")
+                pointer += 2    # Beginning of RData
+                print(f"THIS IS THE START OF THE RDATA SECTION : {pointer}\n")
+                alias = get_alias(data, pointer)
+                pointer += rdlength ## Beginning of next answer
+                print(f"CNAME \t {alias} \t {ttl} \t {authorityBit}\n")
+            case 1:
+                print("THIS IS THE START OF THE IP SECTION\n")
+                ttl = getTTL(data, pointer)
+                pointer += 6 # go straight to RData
+                ip = get_ip_address(data, pointer)
+                pointer +=4 # Beginning of next answer
+                print(f"IP \t {ip} \t {ttl} \t { authorityBit}\n")
+            case 2:
+                print("THIS IS THE START OF THE NAME SERVER SECTION\n")
+                ttl = getTTL(data, pointer)
+                pointer += 4
+                rdlength = data[pointer] << 8 | data[pointer + 1]
+                pointer += 2
+                alias = get_alias(data,pointer)
+                pointer += rdlength
+                print(f"NS \t {alias} \t {ttl} \t {authorityBit}\n")
+            case 15:
+                print("THIS IS THE START OF THE MAIL SERVER SECTION\n")
+                ttl = getTTL(data, pointer)
+                pointer += 4
+                rdlength = data[pointer] << 8 | data[pointer + 1]
+                pointer += 2
+                pref = data[pointer] << 8 | data[pointer + 1]
+                pointer += 2
+                alias = get_alias(data, pointer)
+                pointer += rdlength
+                print(f"MX \t {alias} \t {pref} \t {ttl} \t {authorityBit}\n")
+    return pointer
 
 
-# Extract the labels in the RDATA (CNAME) field
-    for _ in range(14):
-        label_length = data[pointer]
-        label = data[pointer + 1:pointer + 1 + label_length]
-        cname.append(label.decode('utf-8'))
-        pointer += 1 + label_length
-
-    # Join the labels to form the CNAME
-    cname = '.'.join(cname)
-    print(f"THIS IS THE CNAME ALIAS : {cname}")
 
 def get_response_information(data, question):
     authorityBit = (data[2] & 32) >> 5
@@ -221,7 +301,7 @@ def get_response_information(data, question):
         qCounter += 1
     
     numAnswers = (data[6] << 8) | data[7]  # takes answer bytes into integer
-    print(f"***Answers Section ({numAnswers} records)***\n")
+    print(f"*** Answers Section ({numAnswers} records) ***\n")
     aCounter = 0
 
     # makes sure we start at the beginning of the byte sequence
@@ -254,6 +334,7 @@ def get_response_information(data, question):
         pointer += 4    # Beginning of TTL bytes
         match type:
             case 5:
+                print("THIS IS THE START OF THE CNAME SECTION\n")
                 print(f"THIS IS THE START OF THE TTL SECTION : {pointer}\n")
                 ttl = getTTL(data, pointer)
                 pointer += 4    # Beginning of the RDLength
@@ -261,9 +342,38 @@ def get_response_information(data, question):
                 rdlength = data[pointer] << 8 | data[pointer + 1]
                 print(f"THIS IS THE LENGTH OF RDATA IN BYTES : {rdlength}\n")
                 pointer += 2    # Beginning of RData
-                print(f"THIS IS THE START OF THE RDATA SECTION : {pointer}")
-                get_cname_alias(data, pointer, rdlength)
-
+                print(f"THIS IS THE START OF THE RDATA SECTION : {pointer}\n")
+                alias = get_alias(data, pointer)
+                pointer += rdlength ## Beginning of next answer
+                print(f"CNAME \t {alias} \t {ttl} \t {authorityBit}\n")
+            case 1:
+                print("THIS IS THE START OF THE IP SECTION\n")
+                ttl = getTTL(data, pointer)
+                pointer += 6 # go straight to RData
+                ip = get_ip_address(data, pointer)
+                pointer +=4 # Beginning of next answer
+                print(f"IP \t {ip} \t {ttl} \t { authorityBit}\n")
+            case 2:
+                print("THIS IS THE START OF THE NAME SERVER SECTION\n")
+                ttl = getTTL(data, pointer)
+                pointer += 4
+                rdlength = data[pointer] << 8 | data[pointer + 1]
+                pointer += 2
+                alias = get_alias(data,pointer)
+                pointer += rdlength
+                print(f"NS \t {alias} \t {ttl} \t {authorityBit}\n")
+            case 15:
+                print("THIS IS THE START OF THE MAIL SERVER SECTION\n")
+                ttl = getTTL(data, pointer)
+                pointer += 4
+                rdlength = data[pointer] << 8 | data[pointer + 1]
+                pointer += 2
+                pref = data[pointer] << 8 | data[pointer + 1]
+                pointer += 2
+                alias = get_alias(data, pointer)
+                pointer += rdlength
+                print(f"MX \t {alias} \t {pref} \t {ttl} \t {authorityBit}\n")
+    return pointer
 
 
 def main():
@@ -318,7 +428,13 @@ def main():
                     if data is not None:
                         print("Received Data!")
                         print(data)
-                        get_response_information(data, question)
+                        pointer = get_response_information(data, question)
+                        additionalRecords = data[10] << 8 | data[11]
+                        if (additionalRecords > 0):
+                            get_additional_information(data, pointer, additionalRecords)
+                        else:
+                            print("NOT FOUND\n")
+
             except KeyboardInterrupt:
                 pass
             finally:
